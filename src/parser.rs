@@ -4,6 +4,7 @@
     - Write tests that WILL fail alongside those that WILL succeed.
     - Have parse() return a Maybe Int, wherein, if we parsed correctly then we're None,
       otherwise we are a Some(-1), which we unwrap and return.
+    - There is an error with non ascii characters when trying to construct a string.
 */
 
 
@@ -37,8 +38,6 @@ impl Parser<'_> {
         temp_parser
     }
 
-    // TODO: Return an error code instead of panicing, panicing is like
-    //       if shit goes REALLY wrong.
     pub fn parse(&mut self) -> i32 {
         match self.cur_token.kind {
             TokenKind::Opcurlybracket => self.object(),
@@ -133,7 +132,9 @@ impl Parser<'_> {
         } else {
             // Array with values inside, loop so long as we have values.
             loop {
+                dbg!(self.cur_token.kind);
                 self.value();
+                dbg!(self.cur_token.kind);
                 let end_of_array =
                     !self.check_token(TokenKind::Comma) && self.check_token(TokenKind::Clsqbracket);
                 if end_of_array {
@@ -184,12 +185,6 @@ impl Parser<'_> {
         match self.check_token(token_kind) {
             true => self.next_token(),
             false => self.fail_to_parse("Expected a string."),
-            /*
-            false => panic!(
-                "Expected {}, got {} instead.",
-                token_kind, self.cur_token.kind
-            ),
-            */
         };
     }
 

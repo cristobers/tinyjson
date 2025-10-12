@@ -207,8 +207,6 @@ impl Lexer {
                 }
             }
             _ => {
-                // TODO: Floating point numbers
-                // If we're currently numeric.
                 if self.cur_char.is_numeric() {
                     let start_pos = self.cur_pos as usize;
                     while let Some(c) = self.peek() {
@@ -224,9 +222,6 @@ impl Lexer {
                         .get(start_pos..end_pos)
                         .expect("Failed to construct a number, range led to OOB.")
                         .to_owned();
-                    // TODO:
-                    // If we have a decimalpoint in our floating point number,
-                    // make sure that it follows the right rules.
                     if constructed.contains('.') {
                         if !self.valid_fp_number(&constructed) {
                             self.parse_error("Invalid Floating point number.");
