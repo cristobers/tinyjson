@@ -47,13 +47,9 @@ impl Lexer {
         }
     }
 
-    pub fn skip_whitespace(&mut self) {
-        while self.cur_char.is_ascii_whitespace() {
-            if self.cur_char == '\n' {
-                self.newline_count += 1
-            }
-            self.next_char();
-        }
+    fn parse_error(&mut self, output_msg: &str) {
+        eprintln!("{}", output_msg);
+        std::process::exit(-1);
     }
 
     /// peek :: String -> Maybe char
@@ -101,10 +97,10 @@ impl Lexer {
 
     fn valid_fp_number(&mut self, potential: &str) -> bool {
         // Do we have more than one decimal point in our number? if so, this is bad.
-        let point_count : usize  = potential
+        let point_count: usize = potential
             .chars()
             .filter(|x| *x == '.')
-            .collect::<Vec<char>>() 
+            .collect::<Vec<char>>()
             .len();
         if point_count > 1 {
             return false;
@@ -126,9 +122,13 @@ impl Lexer {
                 text: String::from(' '),
                 kind: TokenKind::Space,
             },
-            '\n' => Token {
-                text: String::from('\n'),
-                kind: TokenKind::Linefeed,
+            '\n' => {
+                // Increment out newline count, for showing better error messages
+                self.newline_count += 1;
+                Token {
+                    text: String::from('\n'),
+                    kind: TokenKind::Linefeed,
+                }
             },
             '\r' => Token {
                 text: String::from('\r'),
@@ -169,16 +169,18 @@ impl Lexer {
             '.' => {
                 if let Some(c) = self.peek() {
                     if c.is_numeric() {
-                        panic!("Malformed floating point number.");
+                        self.parse_error(&format!("Malformed floating point number at line number: {}", self.newline_count));
                     }
                     Token {
                         text: String::from('.'),
                         kind: TokenKind::Decimalpoint,
                     }
                 } else {
-                    panic!("Failed to peek after \'.\'");
+                    self.parse_error("Failed to peek after \".\"");
+                    // Literally doesnt matter, we've exited by now
+                    Token { text: String::new(), kind: TokenKind::Empty }
                 }
-            },
+            }
             '\"' => {
                 // Goto the next char, ignore the quote at the start of the String.
                 self.next_char();
@@ -188,10 +190,7 @@ impl Lexer {
                 while self.cur_char != '\"' {
                     // If we end up never finding another quote, throw an error and quit.
                     if self.cur_pos as usize > self.source.len() {
-                        panic!(
-                            "LEXER ERROR: Missing quotation mark for string at line number: {}",
-                            self.newline_count
-                        );
+                        self.parse_error(&format!("Missing quotation mark for string at line number: {}", self.newline_count));
                     }
                     self.next_char();
                 }
@@ -212,8 +211,7 @@ impl Lexer {
                 // If we're currently numeric.
                 if self.cur_char.is_numeric() {
                     let start_pos = self.cur_pos as usize;
-                    while let Some(c) = self.peek()
-                    {
+                    while let Some(c) = self.peek() {
                         if c == '.' || c.is_numeric() {
                             self.next_char();
                         } else {
@@ -231,7 +229,7 @@ impl Lexer {
                     // make sure that it follows the right rules.
                     if constructed.contains('.') {
                         if !self.valid_fp_number(&constructed) {
-                            panic!("Invalid FP number.");
+                            self.parse_error("Invalid Floating point number.");
                         }
                     }
                     Token {
@@ -254,10 +252,14 @@ impl Lexer {
                         .to_owned();
                     match self.is_keyword(&constructed) {
                         Some(t) => t,
-                        _ => panic!("Unknown keyword: {}", &constructed),
+                        _ => {
+                            self.parse_error(&format!("Unknown keyword: {}", &constructed));
+                            Token { text: String::new(), kind: TokenKind::Empty }
+                        }
                     }
                 } else {
-                    panic!("Unknown character: {}", self.cur_char);
+                    self.parse_error(&format!("Unknown character: {}", self.cur_char));
+                    Token { text: String::new(), kind: TokenKind::Empty }
                 }
             }
         };

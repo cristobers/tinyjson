@@ -1,3 +1,12 @@
+
+/*
+    TODO:
+    - Write tests that WILL fail alongside those that WILL succeed.
+    - Have parse() return a Maybe Int, wherein, if we parsed correctly then we're None,
+      otherwise we are a Some(-1), which we unwrap and return.
+*/
+
+
 use crate::lexer;
 use crate::token::Token;
 use crate::token::TokenKind;
@@ -28,13 +37,21 @@ impl Parser<'_> {
         temp_parser
     }
 
-    pub fn parse(&mut self) {
+    // TODO: Return an error code instead of panicing, panicing is like
+    //       if shit goes REALLY wrong.
+    pub fn parse(&mut self) -> i32 {
         match self.cur_token.kind {
             TokenKind::Opcurlybracket => self.object(),
-            TokenKind::Opsqbracket    => self.array(),
+            TokenKind::Opsqbracket => self.array(),
             // Every other case is just checked by the lexer (???)
-            _                         => ()
+            _ => (),
         }
+        0
+    }
+
+    fn fail_to_parse(&mut self, output_msg: &str) {
+        eprintln!("Parse error: {}", output_msg);
+        std::process::exit(-1);
     }
 
     fn finish(&mut self) {
@@ -42,11 +59,9 @@ impl Parser<'_> {
     }
 
     fn object(&mut self) {
-        //println!("JSON OBJECT START");
         self.token_match(TokenKind::Opcurlybracket);
         self.whitespace();
         if self.check_token(TokenKind::Clcurlybracket) {
-            //println!("JSON OBJECT END");
             return;
         } else if self.string() {
             self.next_token();
@@ -63,7 +78,11 @@ impl Parser<'_> {
                     self.next_token();
                     self.whitespace();
                     if !self.string() {
-                        panic!("Expected a string.");
+                        dbg!(self.cur_token.kind);
+                        if self.check_token(TokenKind::Clcurlybracket) {
+                            self.fail_to_parse("Trailing comma found at end of object.");
+                        }
+                        self.fail_to_parse("Expected a string.");
                     }
                     self.next_token();
                     self.whitespace();
@@ -76,7 +95,7 @@ impl Parser<'_> {
                 return;
             }
         }
-        panic!("Missing closing curly bracket.");
+        self.fail_to_parse("Expected a string.");
     }
 
     fn string(&mut self) -> bool {
@@ -84,7 +103,6 @@ impl Parser<'_> {
     }
 
     fn value(&mut self) {
-        //println!("VALUE");
         self.whitespace();
 
         match self.cur_token.kind {
@@ -95,7 +113,7 @@ impl Parser<'_> {
             TokenKind::True => (),
             TokenKind::False => (),
             TokenKind::Null => (),
-            _ => panic!("Unknown value provided: {}", self.cur_token.text),
+            _               => self.fail_to_parse("Expected a string."),
         }
         self.next_token();
 
@@ -130,7 +148,6 @@ impl Parser<'_> {
     fn whitespace(&mut self) {
         while self.cur_token.kind == TokenKind::Space || self.cur_token.kind == TokenKind::Linefeed
         {
-            //println!("WHITESPACE");
             self.next_token();
         }
     }
@@ -166,10 +183,13 @@ impl Parser<'_> {
         //println!("{}", token_kind);
         match self.check_token(token_kind) {
             true => self.next_token(),
+            false => self.fail_to_parse("Expected a string."),
+            /*
             false => panic!(
                 "Expected {}, got {} instead.",
                 token_kind, self.cur_token.kind
             ),
+            */
         };
     }
 
@@ -186,157 +206,109 @@ mod tests {
     use crate::Parser;
 
     #[test]
-    #[should_panic]
-    fn missing_closing_object() {
-        let mut lexer: Lexer = Lexer::new(String::from("{ "));
-        let mut parser = Parser::new(&mut lexer);
-        parser.parse();
-    }
-
-    #[test]
-    #[should_panic]
-    fn missing_closing_array() {
-        let mut lexer: Lexer = Lexer::new(String::from("[ "));
-        let mut parser = Parser::new(&mut lexer);
-        parser.parse();
-    }
-
-    #[test]
-    #[should_panic]
-    fn bad_string() {
-        let mut lexer: Lexer = Lexer::new(String::from("\"foo"));
-        let mut parser = Parser::new(&mut lexer);
-        parser.parse();
-    }
-
-    #[test]
-    #[should_panic]
-    fn unknown_value() {
-        let mut lexer: Lexer = Lexer::new(String::from("bob"));
-        let mut parser = Parser::new(&mut lexer);
-        parser.parse();
-    }
-
-    #[test]
-    #[should_panic]
-    fn wrong_place_dp() {
-        let mut lexer: Lexer = Lexer::new(String::from(".3"));
-        let mut parser = Parser::new(&mut lexer);
-        parser.parse();
-    }
-
-    #[test]
-    #[should_panic]
-    fn bad_fp_number() {
-        let mut lexer: Lexer = Lexer::new(String::from("314159."));
-        let mut parser = Parser::new(&mut lexer);
-        parser.parse();
-    }
-
-    #[test]
-    #[should_panic]
-    fn double_bad_fp_number() {
-        let mut lexer: Lexer = Lexer::new(String::from("31.415.9"));
-        let mut parser = Parser::new(&mut lexer);
-        parser.parse();
-    }
-
-    #[test]
     fn empty_object() {
         let mut lexer: Lexer = Lexer::new(String::from("{ }"));
         let mut parser = Parser::new(&mut lexer);
-        parser.parse();
+        assert_eq!(parser.parse(), 0);
     }
 
     #[test]
     fn empty_object_again() {
         let mut lexer: Lexer = Lexer::new(String::from("{}"));
         let mut parser = Parser::new(&mut lexer);
-        parser.parse();
-    }
-
-    #[test]
-    fn one_value_object() {
-        let mut lexer: Lexer = Lexer::new(String::from("{ \"name\": \"bob\" }"));
-        let mut parser = Parser::new(&mut lexer);
-        parser.parse();
-    }
-
-    #[test]
-    fn two_values_object() {
-        let mut lexer: Lexer = Lexer::new(String::from("{ \"name\": \"bob\", \"alive\": true }"));
-        let mut parser = Parser::new(&mut lexer);
-        parser.parse();
-    }
-
-    #[test]
-    fn object_in_object() {
-        let mut lexer: Lexer = Lexer::new(String::from("{ \"inner\": { } }"));
-        let mut parser = Parser::new(&mut lexer);
-        parser.parse();
-    }
-
-    #[test]
-    fn array_in_object() {
-        let mut lexer: Lexer = Lexer::new(String::from("{ \"foo\": [1,2,3,4,true,false,null]}"));
-        let mut parser = Parser::new(&mut lexer);
-        parser.parse();
-    }
-
-    #[test]
-    fn empty_array() {
-        let mut lexer: Lexer = Lexer::new(String::from("[ ]"));
-        let mut parser = Parser::new(&mut lexer);
-        parser.parse();
-    }
-
-    #[test]
-    fn empty_array_again() {
-        let mut lexer: Lexer = Lexer::new(String::from("[]"));
-        let mut parser = Parser::new(&mut lexer);
-        parser.parse();
-    }
-
-    #[test]
-    fn non_string_values_object() {
-        let mut lexer: Lexer = Lexer::new(String::from("{ \"true\": true, \"false\": false, \"null\": null, \"ns\": [3, 4, 12], \"n\": 3 }"));
-        let mut parser = Parser::new(&mut lexer);
-        parser.parse();
-    }
-
-    #[test]
-    fn arrays() {
-        let mut lexer: Lexer = Lexer::new(String::from("[1,  2, \"foo\", true,false, null]"));
-        let mut parser = Parser::new(&mut lexer);
-        parser.parse();
-    }
-
-    #[test]
-    fn string() {
-        let mut lexer: Lexer = Lexer::new(String::from("\"foo\""));
-        let mut parser = Parser::new(&mut lexer);
-        parser.parse();
-    }
-
-    #[test]
-    fn number() {
-        let mut lexer: Lexer = Lexer::new(String::from("1"));
-        let mut parser = Parser::new(&mut lexer);
-        parser.parse();
+        assert_eq!(parser.parse(), 0);
     }
 
     #[test]
     fn fp_number() {
         let mut lexer: Lexer = Lexer::new(String::from("3.14159"));
         let mut parser = Parser::new(&mut lexer);
-        parser.parse();
+        assert_eq!(parser.parse(), 0);
+    }
+
+    #[test]
+    fn one_value_object() {
+        let mut lexer: Lexer = Lexer::new(String::from("{ \"name\": \"bob\" }"));
+        let mut parser = Parser::new(&mut lexer);
+        assert_eq!(parser.parse(), 0);
+    }
+
+    #[test]
+    fn two_values_object() {
+        let mut lexer: Lexer = Lexer::new(String::from("{ \"name\": \"bob\", \"alive\": true }"));
+        let mut parser = Parser::new(&mut lexer);
+        assert_eq!(parser.parse(), 0);
+    }
+
+    #[test]
+    fn number() {
+        let mut lexer: Lexer = Lexer::new(String::from("1"));
+        let mut parser = Parser::new(&mut lexer);
+        assert_eq!(parser.parse(), 0);
+    }
+
+    #[test]
+    fn string() {
+        let mut lexer: Lexer = Lexer::new(String::from("\"foo\""));
+        let mut parser = Parser::new(&mut lexer);
+        assert_eq!(parser.parse(), 0);
+    }
+
+    #[test]
+    fn long_number() {
+        let mut lexer: Lexer = Lexer::new(String::from("1223334444555556666667777777888888889999999990"));
+        let mut parser = Parser::new(&mut lexer);
+        assert_eq!(parser.parse(), 0);
     }
 
     #[test]
     fn value() {
         let mut lexer: Lexer = Lexer::new(String::from("true"));
         let mut parser = Parser::new(&mut lexer);
-        parser.parse();
+        assert_eq!(parser.parse(), 0);
     }
 
+    #[test]
+    fn empty_array() {
+        let mut lexer: Lexer = Lexer::new(String::from("[ ]"));
+        let mut parser = Parser::new(&mut lexer);
+        assert_eq!(parser.parse(), 0);
+    }
+
+    #[test]
+    fn empty_array_again() {
+        let mut lexer: Lexer = Lexer::new(String::from("[]"));
+        let mut parser = Parser::new(&mut lexer);
+        assert_eq!(parser.parse(), 0);
+    }
+
+    #[test]
+    fn arrays() {
+        let mut lexer: Lexer = Lexer::new(String::from("[1,  2, \"foo\", true,false, null]"));
+        let mut parser = Parser::new(&mut lexer);
+        assert_eq!(parser.parse(), 0);
+    }
+
+    #[test]
+    fn object_in_object() {
+        let mut lexer: Lexer = Lexer::new(String::from("{ \"inner\": { } }"));
+        let mut parser = Parser::new(&mut lexer);
+        assert_eq!(parser.parse(), 0);
+    }
+
+    #[test]
+    fn array_in_object() {
+        let mut lexer: Lexer = Lexer::new(String::from("{ \"foo\": [1,2,3,4,true,false,null]}"));
+        let mut parser = Parser::new(&mut lexer);
+        assert_eq!(parser.parse(), 0);
+    }
+
+    #[test]
+    fn non_string_values_object() {
+        let mut lexer: Lexer = Lexer::new(String::from(
+            "{ \"true\": true, \"false\": false, \"null\": null, \"ns\": [3, 4, 12], \"n\": 3 }",
+        ));
+        let mut parser = Parser::new(&mut lexer);
+        assert_eq!(parser.parse(), 0);
+    }
 }

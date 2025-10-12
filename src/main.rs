@@ -10,6 +10,8 @@ use std::env;
 use std::fs;
 use std::io;
 
+use std::process;
+
 fn main() {
     let args: String = env::args().nth(1).expect("Failed to get input JSON");
 
