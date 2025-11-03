@@ -1,5 +1,3 @@
-use std::process;
-
 use crate::token::KEYWORD_MAX;
 use crate::token::KEYWORD_MIN;
 use crate::token::Token;
@@ -20,7 +18,7 @@ impl Lexer {
             source,
             cur_char: ' ',
             cur_pos: -1,
-            newline_count: 0,
+            newline_count: 1,
         };
         temp_lexer.source.push('\n');
         // Initalise cur_char
@@ -48,7 +46,7 @@ impl Lexer {
     }
 
     fn parse_error(&mut self, output_msg: &str) {
-        eprintln!("{}", output_msg);
+        eprintln!("Parse error: {} at line number {}", output_msg, self.newline_count);
         std::process::exit(-1);
     }
 
@@ -129,7 +127,7 @@ impl Lexer {
                     text: String::from('\n'),
                     kind: TokenKind::Linefeed,
                 }
-            },
+            }
             '\r' => Token {
                 text: String::from('\r'),
                 kind: TokenKind::Carriagereturn,
@@ -169,7 +167,7 @@ impl Lexer {
             '.' => {
                 if let Some(c) = self.peek() {
                     if c.is_numeric() {
-                        self.parse_error(&format!("Malformed floating point number at line number: {}", self.newline_count));
+                        self.parse_error("Malformed floating point number");
                     }
                     Token {
                         text: String::from('.'),
@@ -178,7 +176,10 @@ impl Lexer {
                 } else {
                     self.parse_error("Failed to peek after \".\"");
                     // Literally doesnt matter, we've exited by now
-                    Token { text: String::new(), kind: TokenKind::Empty }
+                    Token {
+                        text: String::new(),
+                        kind: TokenKind::Empty,
+                    }
                 }
             }
             '\"' => {
@@ -190,7 +191,7 @@ impl Lexer {
                 while self.cur_char != '\"' {
                     // If we end up never finding another quote, throw an error and quit.
                     if self.cur_pos as usize > self.source.len() {
-                        self.parse_error(&format!("Missing quotation mark for string at line number: {}", self.newline_count));
+                        self.parse_error("Missing quotation mark for string");
                     }
                     self.next_char();
                 }
@@ -248,13 +249,19 @@ impl Lexer {
                     match self.is_keyword(&constructed) {
                         Some(t) => t,
                         _ => {
-                            self.parse_error(&format!("Unknown keyword: {}", &constructed));
-                            Token { text: String::new(), kind: TokenKind::Empty }
+                            self.parse_error(&format!("Unknown keyword \"{}\"", &constructed));
+                            Token {
+                                text: String::new(),
+                                kind: TokenKind::Empty,
+                            }
                         }
                     }
                 } else {
-                    self.parse_error(&format!("Unknown character: {}", self.cur_char));
-                    Token { text: String::new(), kind: TokenKind::Empty }
+                    self.parse_error(&format!("Unknown character \"{}\"", self.cur_char));
+                    Token {
+                        text: String::new(),
+                        kind: TokenKind::Empty,
+                    }
                 }
             }
         };

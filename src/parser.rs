@@ -1,13 +1,3 @@
-
-/*
-    TODO:
-    - Write tests that WILL fail alongside those that WILL succeed.
-    - Have parse() return a Maybe Int, wherein, if we parsed correctly then we're None,
-      otherwise we are a Some(-1), which we unwrap and return.
-    - There is an error with non ascii characters when trying to construct a string.
-*/
-
-
 use crate::lexer;
 use crate::token::Token;
 use crate::token::TokenKind;
@@ -68,7 +58,6 @@ impl Parser<'_> {
             self.token_match(TokenKind::Colon);
             self.value();
             if self.check_token(TokenKind::Comma) {
-                //println!("COMMA");
                 loop {
                     if self.check_token(TokenKind::Clcurlybracket) {
                         self.finish();
@@ -112,7 +101,7 @@ impl Parser<'_> {
             TokenKind::True => (),
             TokenKind::False => (),
             TokenKind::Null => (),
-            _               => self.fail_to_parse("Expected a string."),
+            _ => self.fail_to_parse("Expected a string."),
         }
         self.next_token();
 
@@ -132,9 +121,7 @@ impl Parser<'_> {
         } else {
             // Array with values inside, loop so long as we have values.
             loop {
-                dbg!(self.cur_token.kind);
                 self.value();
-                dbg!(self.cur_token.kind);
                 let end_of_array =
                     !self.check_token(TokenKind::Comma) && self.check_token(TokenKind::Clsqbracket);
                 if end_of_array {
@@ -251,7 +238,9 @@ mod tests {
 
     #[test]
     fn long_number() {
-        let mut lexer: Lexer = Lexer::new(String::from("1223334444555556666667777777888888889999999990"));
+        let mut lexer: Lexer = Lexer::new(String::from(
+            "1223334444555556666667777777888888889999999990",
+        ));
         let mut parser = Parser::new(&mut lexer);
         assert_eq!(parser.parse(), 0);
     }

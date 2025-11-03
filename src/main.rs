@@ -4,7 +4,6 @@ mod token;
 
 use crate::lexer::Lexer;
 use crate::parser::Parser;
-use crate::token::TokenKind;
 
 use std::env;
 use std::fs;
