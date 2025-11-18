@@ -13,4 +13,4 @@ cargo build --release && <path_to_built_binary>/./tinyjson <input_file>
 ## Issues
 
 - Doesn't handle non-ASCII characters when constructing strings.
-- Only understands decimal numbers at the moment.
+- Only understands decimal numbers when parsing numbers at the moment.
