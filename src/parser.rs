@@ -93,7 +93,7 @@ impl Parser<'_> {
             TokenKind::True => (),
             TokenKind::False => (),
             TokenKind::Null => (),
-            _ => self.fail_to_parse("Expected a string."),
+            _ => self.fail_to_parse("Failed to parse a value."),
         }
         self.next_token();
 
@@ -163,7 +163,7 @@ impl Parser<'_> {
         //println!("{}", token_kind);
         match self.check_token(token_kind) {
             true => self.next_token(),
-            false => self.fail_to_parse("Expected a string."),
+            false => self.fail_to_parse("Failed to match token"),
         };
     }
 
