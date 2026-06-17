@@ -51,6 +51,7 @@ impl Parser<'_> {
     fn object(&mut self) {
         self.token_match(TokenKind::Opcurlybracket);
         self.whitespace();
+        // End of an empty object
         if self.check_token(TokenKind::Clcurlybracket) {
             return;
         } else if self.string() {
@@ -63,6 +64,7 @@ impl Parser<'_> {
             } else if self.check_token(TokenKind::Comma) {
                 loop {
                     self.whitespace();
+                    // End of object
                     if self.check_token(TokenKind::Clcurlybracket) {
                         return;
                     }
