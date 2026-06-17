@@ -35,11 +35,12 @@ impl Parser<'_> {
             // Every other case is just checked by the lexer (???)
             _ => (),
         }
+        self.finish();
         0
     }
 
     fn fail_to_parse(&mut self, output_msg: &str) {
-        eprintln!("Parse error: {}", output_msg);
+        eprintln!("Parse error: {} Current token: {}", output_msg, self.cur_token);
         std::process::exit(-1);
     }
 
@@ -57,33 +58,24 @@ impl Parser<'_> {
             self.whitespace();
             self.token_match(TokenKind::Colon);
             self.value();
-            if self.check_token(TokenKind::Comma) {
+            if self.check_token(TokenKind::Clcurlybracket) {
+                return;
+            } else if self.check_token(TokenKind::Comma) {
                 loop {
+                    self.whitespace();
                     if self.check_token(TokenKind::Clcurlybracket) {
-                        self.finish();
                         return;
                     }
-                    self.next_token();
+                    self.token_match(TokenKind::Comma);
                     self.whitespace();
-                    if !self.string() {
-                        dbg!(self.cur_token.kind);
-                        if self.check_token(TokenKind::Clcurlybracket) {
-                            self.fail_to_parse("Trailing comma found at end of object.");
-                        }
-                        self.fail_to_parse("Expected a string.");
-                    }
-                    self.next_token();
+                    self.token_match(TokenKind::String);
                     self.whitespace();
                     self.token_match(TokenKind::Colon);
                     self.value();
                 }
-            } else {
-                self.token_match(TokenKind::Clcurlybracket);
-                self.finish();
-                return;
             }
         }
-        self.fail_to_parse("Expected a string.");
+        self.fail_to_parse("Expected a string for name in name/value pair.");
     }
 
     fn string(&mut self) -> bool {
@@ -282,7 +274,7 @@ mod tests {
 
     #[test]
     fn array_in_object() {
-        let mut lexer: Lexer = Lexer::new(String::from("{ \"foo\": [1,2,3,4,true,false,null]}"));
+        let mut lexer: Lexer = Lexer::new(String::from("{ \"foo\": [1,2,3,4,true,false,null] }"));
         let mut parser = Parser::new(&mut lexer);
         assert_eq!(parser.parse(), 0);
     }
